@@ -95,8 +95,8 @@ class AuthenticationRequest
 
         $claims = array(
             "id_token" => array(
-                "nbf" =>  array( "essential" => true ),
-                "jti" =>  array( "essential" => true )
+                "nbf" => array("essential" => true),
+                "jti" => array("essential" => true)
             ),
             "userinfo" => $userinfo_claims
         );
@@ -105,7 +105,7 @@ class AuthenticationRequest
             "jti" => 'spid-cie-php-oidc_' . uniqid(),
             "iss" => $client_id,
             "sub" => $client_id,
-            "aud" => array($client_id),
+            "aud" => array($authorization_endpoint),
             "iat" => strtotime("now"),
             "exp" => strtotime("+180 seconds"),
             "client_id" => $client_id,
@@ -143,6 +143,7 @@ class AuthenticationRequest
             "&code_challenge=" . $code_challenge .
             "&code_challenge_method=" . $code_challenge_method .
             "&nonce=" . $nonce .
+            "&redirect_uri=" . $redirect_uri .
             "&request=" . $signed_request;
 
         return $authentication_request;
@@ -169,15 +170,18 @@ class AuthenticationRequest
             $hooks_pre = $this->hooks['pre_authorization_request'];
             if ($hooks_pre != null && is_array($hooks_pre)) {
                 foreach ($hooks_pre as $hpreClass) {
-                    $hpre = new $hpreClass($config);
-                    $hpre->run(array(
-                        "authorization_endpoint" => $authorization_endpoint,
-                        "acr" => $acr,
-                        "user_attributes" => $user_attributes,
-                        "code_verifier" => $code_verifier,
-                        "nonce" => $nonce,
-                        "authentication_request_url" => $authenticationRequestURL
-                    ));
+                    $hpre = new $hpreClass($this->config);
+                    $hpre->run(
+                        array(
+                            "authorization_endpoint" => $authorization_endpoint,
+                            "acr" => $acr,
+                            "user_attributes" => $user_attributes,
+                            "code_verifier" => $code_verifier,
+                            "redirect_uri" => $this->config['redirect_uri'],
+                            "nonce" => $nonce,
+                            "authentication_request_url" => $authenticationRequestURL
+                        )
+                    );
                 }
             }
         }

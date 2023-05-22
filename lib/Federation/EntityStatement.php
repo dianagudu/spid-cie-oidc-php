@@ -73,7 +73,7 @@ class EntityStatement
             "iat" => strtotime("now"),
             "exp" => strtotime("+1 year"),
             "jwks" => array(
-                "keys" => array( $crt_jwk )
+                "keys" => array($crt_jwk)
             ),
             "authority_hints" => array(
                 $config['authority_hint']
@@ -82,15 +82,15 @@ class EntityStatement
             "metadata" => array(
                 "openid_relying_party" => array(
                     "application_type" => "web",
-                    "client_registration_types" => array( "automatic" ),
+                    "client_registration_types" => array("automatic"),
                     "client_name" => $config['client_name'],
-                    "contacts" => array( $config['contact'] ),
-                    "grant_types" => array( "authorization_code" ),
+                    "contacts" => array($config['contact']),
+                    "grant_types" => array("authorization_code"),
                     "jwks" => array(
-                        "keys" => array( $crt_jwk )
+                        "keys" => array($crt_jwk)
                     ),
-                    "redirect_uris" => array( $config['client_id'] . '/oidc/redirect' ),
-                    "response_types" => array( "code" ),
+                    "redirect_uris" => array($config['client_id'] . (Util::stringEndsWith($config['client_id'], '/') ? 'oidc/rp/redirect' : '/oidc/rp/redirect')),
+                    "response_types" => array("code"),
                     "subject_type" => "pairwise"
                 )
             )
@@ -149,7 +149,7 @@ class EntityStatement
         // verify signature
         /*
         if (!JWT::isSignatureVerified($this->token, $jwks)) {
-            throw new \Exception("signature verification failed");
+        throw new \Exception("signature verification failed");
         }
         */
 
@@ -161,7 +161,7 @@ class EntityStatement
         // if issuer is correct
         /*
         if ($this->payload->iss != $this->iss) {
-            throw new \Exception("issuer not valid");
+        throw new \Exception("issuer not valid");
         }
         */
     }

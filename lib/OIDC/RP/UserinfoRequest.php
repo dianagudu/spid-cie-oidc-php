@@ -26,6 +26,7 @@ namespace SPID_CIE_OIDC_PHP\OIDC\RP;
 
 use SPID_CIE_OIDC_PHP\Core\JWT;
 use GuzzleHttp\Client;
+use SPID_CIE_OIDC_PHP\Core\Logger;
 
 /**
  *  Generates the Userinfo Request
@@ -49,6 +50,7 @@ class UserinfoRequest
         $this->config = $config;
         $this->op_metadata = $op_metadata;
         $this->hooks = $hooks;
+        $this->logger = new Logger($config);
 
         $this->http_client = new Client([
             'allow_redirects' => true,
@@ -76,16 +78,18 @@ class UserinfoRequest
             if ($hooks_pre != null && is_array($hooks_pre)) {
                 foreach ($hooks_pre as $hpreClass) {
                     $hpre = new $hpreClass($config);
-                    $hpre->run(array(
-                        "userinfo_endpoint" => $userinfo_endpoint,
-                        "access_token" => $access_token
-                    ));
+                    $hpre->run(
+                        array(
+                            "userinfo_endpoint" => $userinfo_endpoint,
+                            "access_token" => $access_token
+                        )
+                    );
                 }
             }
         }
         // @codeCoverageIgnoreEnd
 
-        $response = $this->http_client->get($userinfo_endpoint, ['headers' => [ 'Authorization' => 'Bearer ' . $access_token ]]);
+        $response = $this->http_client->get($userinfo_endpoint, ['headers' => ['Authorization' => 'Bearer ' . $access_token]]);
 
         $code = $response->getStatusCode();
         if ($code != 200) {
@@ -102,30 +106,37 @@ class UserinfoRequest
             if ($hooks_pre != null && is_array($hooks_pre)) {
                 foreach ($hooks_pre as $hpreClass) {
                     $hpre = new $hpreClass($config);
-                    $hpre->run(array(
-                        "response" => $jwe
-                    ));
+                    $hpre->run(
+                        array(
+                            "response" => $jwe
+                        )
+                    );
                 }
             }
         }
         // @codeCoverageIgnoreEnd
+        // try decrypting, or return the response as is
+        try {
+            $file_key = $this->config['cert_private'];
+            $jws = JWT::decryptJWE($jwe, $file_key);
 
-        $file_key = $this->config['cert_private'];
-        $jws = JWT::decryptJWE($jwe, $file_key);
+            $file_cert = $this->config['cert_public'];
+            $decrypted = $jws->getPayload();
+            $decrypted = str_replace("\"", "", $decrypted);
 
-        $file_cert = $this->config['cert_public'];
-        $decrypted = $jws->getPayload();
-        $decrypted = str_replace("\"", "", $decrypted);
+            // TODO: verify response against OP public key
+            // TODO: select key by kid
+            $jwks = $this->op_metadata->jwks;
+            if (!JWT::isSignatureVerified($decrypted, $jwks)) {
+                throw new \Exception("Impossibile stabilire l'autenticità della risposta");
+            }
 
-        // TODO: verify response against OP public key
-        // TODO: select key by kid
-        $jwks = $this->op_metadata->jwks;
-        if (!JWT::isSignatureVerified($decrypted, $jwks)) {
-            throw new \Exception("Impossibile stabilire l'autenticità della risposta");
+            $payload = JWT::getJWSPayload($decrypted);
+
+            return $payload;
+
+        } catch (\Exception $e) {
+            return json_decode($jwe);
         }
-
-        $payload = JWT::getJWSPayload($decrypted);
-
-        return $payload;
     }
 }

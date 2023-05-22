@@ -119,8 +119,9 @@ class JWT
         $jwk_obj = JWKFactory::createFromCertificateFile($file, ['use' => $use]);
 
         // fix \n json_encode issue
-        $x5c    = $jwk_obj->get('x5c')[0];
-        $x5c    = preg_replace("/\s+/", "", $x5c);
+        $x5c = $jwk_obj->get('x5c');
+        for ($i = 0; $i < count($x5c); $i++)
+            $x5c[$i] = preg_replace("/\s+/", "", $x5c[$i]);
 
         $x5cData = openssl_x509_parse(file_get_contents($file), false);
         $organizationIdentifier = $x5cData['issuer']['organizationIdentifier'];
@@ -128,14 +129,14 @@ class JWT
         $kid = hash('sha256', $organizationIdentifier . '.' . $serialNumber);
 
         $jwk = array(
-            'kid'       => $kid,
-            'kty'       => $jwk_obj->get('kty'),
-            'n'         => $jwk_obj->get('n'),
-            'e'         => $jwk_obj->get('e'),
-            'x5c'       => $x5c,
-            'x5t'       => $jwk_obj->get('x5t'),
-            'x5t#256'   => $jwk_obj->get('x5t#256'),
-            'use'       => $jwk_obj->get('use')
+            'kid' => $kid,
+            'kty' => $jwk_obj->get('kty'),
+            'n' => $jwk_obj->get('n'),
+            'e' => $jwk_obj->get('e'),
+            'x5c' => $x5c,
+            'x5t' => $jwk_obj->get('x5t'),
+            'x5t#256' => $jwk_obj->get('x5t#256'),
+            'use' => $jwk_obj->get('use')
         );
 
         return $jwk;
@@ -189,7 +190,7 @@ class JWT
      */
     public static function getJWSPayload(string $token)
     {
-        $serializerManager = new JWSSerializerManager([ new JWSSerializer() ]);
+        $serializerManager = new JWSSerializerManager([new JWSSerializer()]);
         $jws = $serializerManager->unserialize($token);
         $payload = json_decode($jws->getPayload());
         return $payload;
@@ -208,7 +209,7 @@ class JWT
         $jwks = JWKSet::createFromJson(json_encode($jwks_obj));
         $algorithmManager = JWT::getSigAlgManager();
         $jwsVerifier = new JWSVerifier($algorithmManager);
-        $serializerManager = new JWSSerializerManager([ new JWSSerializer() ]);
+        $serializerManager = new JWSSerializerManager([new JWSSerializer()]);
         $jws = $serializerManager->unserialize($token);
 
         $isSignatureVerified = $jwsVerifier->verifyWithKeySet($jws, $jwks, 0);
@@ -264,7 +265,7 @@ class JWT
 
         // The compression method manager with the DEF (Deflate) method.
         $compressionMethodManager = new CompressionMethodManager([
-           new Deflate(),
+            new Deflate(),
         ]);
 
         // We instantiate our JWE Builder.
@@ -275,15 +276,15 @@ class JWT
         );
 
         $jwe = $jweBuilder
-           ->create()
-           ->withPayload($payload)
-           ->withSharedProtectedHeader([
-               'alg' => 'RSA-OAEP',
-               'enc' => 'A256CBC-HS512',
-               'zip' => 'DEF'
-           ])
-           ->addRecipient($jwk_obj)
-           ->build();
+            ->create()
+            ->withPayload($payload)
+            ->withSharedProtectedHeader([
+                'alg' => 'RSA-OAEP',
+                'enc' => 'A256CBC-HS512',
+                'zip' => 'DEF'
+            ])
+            ->addRecipient($jwk_obj)
+            ->build();
 
         $serializer = new JWESerializer();
         $token = $serializer->serialize($jwe, 0);

@@ -141,6 +141,10 @@ class TrustChain
             $authority_hints == null ||
             (is_array($authority_hints) && count($authority_hints) == 0)
         ) {
+            if ($this->entity != $this->trust_anchor) {
+                $this->database->log("TrustChain", "entity statement for " . $this->entity . " is not a trust anchor", $entity_statement_payload, "ERROR");
+                throw new \Exception("Entity statement for " . $this->entity . " is not a trust anchor");
+            }
             // trust anchor
             $this->database->log("TrustChain", "found trust anchor for leaf " . $this->leaf, $this->entity);
 
@@ -181,9 +185,11 @@ class TrustChain
             return $this->federation_entity_statement;
             die();
         } else {
-            if (!in_array($this->trust_anchor, $authority_hints)) {
-                throw new \Exception("Authority not hinted: " . $this->trust_anchor);
-            }
+            error_log("authority_hints: " . json_encode($authority_hints));
+            error_log("trust_anchor: " . $this->trust_anchor);
+            // if (!in_array($this->trust_anchor, $authority_hints)) {
+            //     throw new \Exception("Authority not hinted: " . $this->trust_anchor);
+            // }
 
             $this->database->log("TrustChain", "found intermediate for leaf " . $this->leaf, $this->entity);
 
@@ -191,7 +197,14 @@ class TrustChain
                 $this->database->log("TrustChain", "resolve trust for leaf " . $this->leaf . " on authority", $authority);
 
                 $parent_entity_statement = new TrustChain($this->config, $this->database, $this->leaf, $this->trust_anchor, $authority);
-                $this->federation_entity_statement = $parent_entity_statement->resolve($policy);
+                try {
+                    $this->federation_entity_statement = $parent_entity_statement->resolve($policy);
+                } catch (\Exception $e) {
+                    $this->database->log("TrustChain", "trust not verified for leaf " . $this->leaf . " on authority", $authority, "ERROR");
+                }
+            }
+            if ($this->federation_entity_statement == null) {
+                throw new \Exception("Unable to verify trust for " . $this->leaf);
             }
 
             $this->database->log("TrustChain", "trust verified for leaf " . $this->leaf, $this->federation_entity_statement);

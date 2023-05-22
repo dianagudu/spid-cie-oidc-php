@@ -105,6 +105,7 @@ class TokenRequest
             'code' => $code,
             'code_verifier' => $code_verifier,
             'grant_type' => $grant_type,
+            'redirect_uri' => $this->config['client_id'] . "oidc/rp/redirect"
         );
 
         if ($refresh && $refresh_token != null) {
@@ -118,16 +119,18 @@ class TokenRequest
             if ($hooks_pre != null && is_array($hooks_pre)) {
                 foreach ($hooks_pre as $hpreClass) {
                     $hpre = new $hpreClass($config);
-                    $hpre->run(array(
-                        "token_endpoint" => $token_endpoint,
-                        "post_data" => $data
-                    ));
+                    $hpre->run(
+                        array(
+                            "token_endpoint" => $token_endpoint,
+                            "post_data" => $data
+                        )
+                    );
                 }
             }
         }
         // @codeCoverageIgnoreEnd
 
-        $response = $this->http_client->post($token_endpoint, [ 'form_params' => $data ]);
+        $response = $this->http_client->post($token_endpoint, ['form_params' => $data]);
 
         // @codeCoverageIgnoreStart
         $code = $response->getStatusCode();
@@ -144,10 +147,12 @@ class TokenRequest
             if ($hooks_pre != null && is_array($hooks_pre)) {
                 foreach ($hooks_pre as $hpreClass) {
                     $hpre = new $hpreClass($config);
-                    $hpre->run(array(
-                        "token_endpoint" => $token_endpoint,
-                        "response" => json_decode((string) $response->getBody())
-                    ));
+                    $hpre->run(
+                        array(
+                            "token_endpoint" => $token_endpoint,
+                            "response" => json_decode((string) $response->getBody())
+                        )
+                    );
                 }
             }
         }
